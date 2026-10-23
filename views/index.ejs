@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= list ? `${list.emoji} ${list.name}` : "TaskFlow" %> · TaskFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <p class="brand">✅ TaskFlow</p>
+      <nav aria-label="Lists">
+        <ul class="lists">
+          <% lists.forEach((l) => { %>
+            <li>
+              <a href="/lists/<%= l.id %>" class="<%= list && list.id === l.id ? 'on' : '' %>" <%= list && list.id === l.id ? 'aria-current=page' : '' %>>
+                <span><%= l.emoji %> <%= l.name %></span>
+                <span class="counts"><% if (l.overdue) { %><b class="overdue-dot" title="<%= l.overdue %> overdue"><%= l.overdue %></b><% } %><%= l.open || "" %></span>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+      </nav>
+      <form method="post" action="/lists" class="new-list">
+        <input name="emoji" value="📝" maxlength="8" aria-label="List emoji" class="emoji-input">
+        <input name="name" placeholder="New list" required maxlength="40" aria-label="New list name">
+        <button type="submit" aria-label="Create list">+</button>
+      </form>
+    </aside>
+
+    <main class="main">
+      <% if (error) { %><p class="error" role="alert"><%= error %></p><% } %>
+      <% if (!list) { %>
+        <h1>Create your first list →</h1>
+      <% } else { %>
+        <header class="list-head">
+          <h1><%= list.emoji %> <%= list.name %></h1>
+          <nav class="filters" aria-label="Filter tasks">
+            <% FILTERS.forEach((f) => { %>
+              <a href="?filter=<%= f %>" class="<%= f === filter ? 'on' : '' %>"><%= f[0].toUpperCase() + f.slice(1) %></a>
+            <% }) %>
+          </nav>
+        </header>
+
+        <form method="post" action="/lists/<%= list.id %>/tasks" class="composer">
+          <input name="title" placeholder="Add a task and press Enter…" required maxlength="200" aria-label="Task title" autofocus>
+          <select name="priority" aria-label="Priority">
+            <% PRIORITIES.forEach((p) => { %><option value="<%= p %>" <%= p === "medium" ? "selected" : "" %>><%= p %></option><% }) %>
+          </select>
+          <input type="date" name="due_on" aria-label="Due date">
+          <button type="submit">Add</button>
+        </form>
+
+        <% if (!tasks.length) { %>
+          <p class="empty"><%= filter === "done" ? "Nothing completed yet." : "All clear. Enjoy the calm ☕" %></p>
+        <% } %>
+
+        <ul class="tasks">
+          <% tasks.forEach((t) => { const due = dueLabel(t.due_on); %>
+            <li class="task p-<%= t.priority %> <%= t.done ? 'done' : '' %>">
+              <form method="post" action="/tasks/<%= t.id %>/toggle">
+                <input type="hidden" name="filter" value="<%= filter %>">
+                <button type="submit" class="check" aria-label="<%= t.done ? 'Mark as not done' : 'Mark as done' %>: <%= t.title %>"><%= t.done ? "✓" : "" %></button>
+              </form>
+              <% if (editing === t.id) { %>
+                <form method="post" action="/tasks/<%= t.id %>/edit" class="edit">
+                  <input type="hidden" name="filter" value="<%= filter %>">
+                  <input name="title" value="<%= t.title %>" required maxlength="200" aria-label="Task title" autofocus>
+                  <select name="priority" aria-label="Priority"><% PRIORITIES.forEach((p) => { %><option value="<%= p %>" <%= p === t.priority ? "selected" : "" %>><%= p %></option><% }) %></select>
+                  <input type="date" name="due_on" value="<%= t.due_on ?? '' %>" aria-label="Due date">
+                  <button type="submit">Save</button>
+                  <a href="?filter=<%= filter %>">Cancel</a>
+                </form>
+              <% } else { %>
+                <div class="body">
+                  <span class="title"><%= t.title %></span>
+                  <span class="meta">
+                    <span class="prio"><%= t.priority %></span>
+                    <% if (due && !t.done) { %><span class="due <%= due.tone %>"><%= due.text %></span><% } %>
+                  </span>
+                </div>
+                <div class="actions">
+                  <a href="?filter=<%= filter %>&edit=<%= t.id %>" aria-label="Edit <%= t.title %>">✎</a>
+                  <form method="post" action="/tasks/<%= t.id %>/delete">
+                    <input type="hidden" name="filter" value="<%= filter %>">
+                    <button type="submit" aria-label="Delete <%= t.title %>">🗑</button>
+                  </form>
+                </div>
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+
+        <footer class="list-foot">
+          <form method="post" action="/lists/<%= list.id %>/clear-done"><button type="submit" class="link">Clear completed</button></form>
+          <form method="post" action="/lists/<%= list.id %>/delete" data-confirm="Delete the “<%= list.name %>” list and all its tasks?"><button type="submit" class="link danger">Delete list</button></form>
+        </footer>
+      <% } %>
+    </main>
+  </div>
+  <footer class="credit">TaskFlow · PostgreSQL + Express + EJS · by <a href="https://github.com/himanshuuem">Himanshu</a></footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
